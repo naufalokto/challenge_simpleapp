@@ -17,9 +17,18 @@ build/
 # Env & secrets
 .env
 .env.*
+!.env.example
 
 # Database dumps / backups
 *.dump
 *.sql
+
+# Uploaded files
+uploads/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
 
 
