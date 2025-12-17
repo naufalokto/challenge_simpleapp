@@ -160,6 +160,12 @@ class TransactionBase(BaseModel):
     quantity: int = 1
     total_amount: float
     status: str = "pending"
+    # Shipping / alamat saat checkout
+    shipping_name: Optional[str] = None
+    shipping_phone: Optional[str] = None
+    shipping_address: Optional[str] = None
+    shipping_city: Optional[str] = None
+    shipping_postal_code: Optional[str] = None
 
 
 class TransactionCreate(TransactionBase):
@@ -174,6 +180,11 @@ class Transaction(TransactionBase):
     updated_at: datetime
     customer_name: Optional[str] = None
     product_name: Optional[str] = None
+    shipping_name: Optional[str] = None
+    shipping_phone: Optional[str] = None
+    shipping_address: Optional[str] = None
+    shipping_city: Optional[str] = None
+    shipping_postal_code: Optional[str] = None
 
     class Config:
         from_attributes = True

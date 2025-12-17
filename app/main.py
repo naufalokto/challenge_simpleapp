@@ -3,19 +3,20 @@ from typing import Optional
 import os
 import shutil
 import uuid
-from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile, Form
+from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile, Form, Request, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
+import json
 
 # Load environment variables from .env file
 load_dotenv()
 
 from . import models, schemas, auth
 from .database import engine, get_db, SessionLocal
-from .midtrans_config import get_midtrans_snap
+from .midtrans_config import get_midtrans_snap, get_midtrans_core
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -428,11 +429,24 @@ def create_payment(
         # Tambahkan customer ID dari current user
         customer_details["user_id"] = str(current_user.id)
         
+        # Prepare redirect URLs untuk redirect kembali ke aplikasi setelah payment
+        # URL akan redirect ke frontend dengan query params order_id dan transaction_status
+        frontend_base_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        # Redirect ke root dengan query params agar bisa di-handle oleh CustomerPage
+        finish_redirect_url = f"{frontend_base_url}/?payment=success"
+        unfinish_redirect_url = f"{frontend_base_url}/?payment=unfinish"
+        error_redirect_url = f"{frontend_base_url}/?payment=error"
+        
         # Create transaction
         param = {
             "transaction_details": transaction_details,
             "item_details": item_details,
-            "customer_details": customer_details
+            "customer_details": customer_details,
+            "callbacks": {
+                "finish": finish_redirect_url,
+                "unfinish": unfinish_redirect_url,
+                "error": error_redirect_url
+            }
         }
         
         # Create transaction token
@@ -452,23 +466,27 @@ def create_payment(
 
 
 @app.post("/api/payment/webhook")
-def payment_webhook(
-    request: dict,
+async def payment_webhook(
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """Handle Midtrans payment notification webhook"""
     try:
+        # Parse JSON body dari Midtrans webhook
+        body = await request.json()
+        
         # Parse webhook data
-        transaction_status = request.get("transaction_status")
-        order_id = request.get("order_id")
-        transaction_id = request.get("transaction_id")
-        gross_amount = request.get("gross_amount")
-        fraud_status = request.get("fraud_status")
-        payment_type = request.get("payment_type")
-        status_message = request.get("status_message")
-        transaction_time = request.get("transaction_time")
+        transaction_status = body.get("transaction_status")
+        order_id = body.get("order_id")
+        transaction_id = body.get("transaction_id")
+        gross_amount = body.get("gross_amount")
+        fraud_status = body.get("fraud_status")
+        payment_type = body.get("payment_type")
+        status_message = body.get("status_message")
+        transaction_time = body.get("transaction_time")
         
         print(f"Webhook received - Order ID: {order_id}, Status: {transaction_status}")
+        print(f"Full webhook data: {json.dumps(body, indent=2)}")
         
         # Find transaction by order_id
         transaction = db.query(models.Transaction).filter(models.Transaction.order_id == order_id).first()
@@ -500,18 +518,22 @@ def payment_webhook(
                 payment.transaction_time = datetime.fromisoformat(transaction_time.replace('Z', '+00:00'))
         
         # Update transaction status and reduce stock on payment success
+        # Hanya kurangi stock jika status berubah dari pending/other ke paid (menghindari double decrement)
         if transaction_status in ["settlement", "capture"]:
             # Payment success
+            # Cek apakah status sebelumnya sudah "paid" untuk menghindari double decrement stock
+            previous_status = transaction.status
             transaction.status = "paid"
             transaction.midtrans_transaction_id = transaction_id
             
-            # Reduce stock if product exists
-            if transaction.product_id:
+            # Reduce stock hanya jika sebelumnya belum "paid" (menghindari double decrement)
+            if previous_status != "paid" and transaction.product_id:
                 product = db.query(models.Product).filter(models.Product.id == transaction.product_id).first()
                 if product:
                     # Check if stock is sufficient
                     if product.stock >= transaction.quantity:
                         product.stock -= transaction.quantity
+                        print(f"Stock reduced for product {product.id}: {product.stock + transaction.quantity} -> {product.stock}")
                     else:
                         print(f"Warning: Insufficient stock for product {product.id}. Stock: {product.stock}, Requested: {transaction.quantity}")
         elif transaction_status in ["deny", "cancel", "expire"]:
@@ -529,6 +551,175 @@ def payment_webhook(
         traceback.print_exc()
         # Tetap return ok agar Midtrans tidak retry terus
         return {"status": "error", "message": str(e)}
+
+
+# ==================== MANUAL PAYMENT STATUS UPDATE (UNTUK TESTING) ====================
+@app.post("/api/payment/manual-update")
+def manual_update_payment_status(
+    order_id: str,
+    transaction_status: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Manual update payment status - untuk testing saat webhook tidak bisa diakses
+    Hanya untuk development/testing, sebaiknya di-disable di production
+    """
+    try:
+        print(f"Manual update - Order ID: {order_id}, Status: {transaction_status}")
+        
+        # Find transaction by order_id
+        transaction = db.query(models.Transaction).filter(models.Transaction.order_id == order_id).first()
+        if not transaction:
+            raise HTTPException(status_code=404, detail=f"Transaction not found for order_id: {order_id}")
+        
+        # Update or create payment record
+        payment = db.query(models.Payment).filter(models.Payment.order_id == order_id).first()
+        if not payment:
+            payment = models.Payment(
+                transaction_id=transaction.id,
+                order_id=order_id,
+                gross_amount=float(transaction.total_amount),
+                transaction_status=transaction_status,
+                midtrans_transaction_id=f"manual-{order_id}",
+            )
+            db.add(payment)
+        else:
+            payment.transaction_status = transaction_status
+        
+        # Update transaction status and reduce stock on payment success
+        # Hanya kurangi stock jika status berubah dari pending/other ke paid (menghindari double decrement)
+        if transaction_status in ["settlement", "capture"]:
+            # Payment success
+            # Cek apakah status sebelumnya sudah "paid" untuk menghindari double decrement stock
+            previous_status = transaction.status
+            transaction.status = "paid"
+            
+            # Reduce stock hanya jika sebelumnya belum "paid" (menghindari double decrement)
+            if previous_status != "paid" and transaction.product_id:
+                product = db.query(models.Product).filter(models.Product.id == transaction.product_id).first()
+                if product:
+                    # Check if stock is sufficient
+                    if product.stock >= transaction.quantity:
+                        product.stock -= transaction.quantity
+                        print(f"Stock reduced for product {product.id}: {product.stock + transaction.quantity} -> {product.stock}")
+                    else:
+                        print(f"Warning: Insufficient stock for product {product.id}. Stock: {product.stock}, Requested: {transaction.quantity}")
+        elif transaction_status in ["deny", "cancel", "expire"]:
+            # Payment failed
+            transaction.status = "failed"
+        
+        db.commit()
+        
+        return {
+            "status": "ok",
+            "message": f"Payment status updated to {transaction_status}",
+            "transaction_id": transaction.id,
+            "order_id": order_id
+        }
+        
+    except Exception as e:
+        print(f"Error in manual update: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== CHECK PAYMENT STATUS FROM MIDTRANS ====================
+@app.get("/api/payment/check-status/{order_id}")
+def check_payment_status(
+    order_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Check payment status dari Midtrans API dan update database
+    Berguna saat webhook tidak terpanggil otomatis
+    """
+    try:
+        # Find transaction by order_id
+        transaction = db.query(models.Transaction).filter(models.Transaction.order_id == order_id).first()
+        if not transaction:
+            raise HTTPException(status_code=404, detail=f"Transaction not found for order_id: {order_id}")
+        
+        # Check permission: customer hanya bisa check transaksi mereka sendiri
+        if current_user.role.name == "customer" and transaction.customer_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Get status dari Midtrans Core API
+        core_api = get_midtrans_core()
+        status_response = core_api.transactions.status(order_id)
+        
+        print(f"Midtrans status check - Order ID: {order_id}, Status: {status_response.get('transaction_status')}")
+        
+        transaction_status = status_response.get("transaction_status")
+        transaction_id = status_response.get("transaction_id")
+        gross_amount = status_response.get("gross_amount")
+        payment_type = status_response.get("payment_type")
+        fraud_status = status_response.get("fraud_status")
+        status_message = status_response.get("status_message")
+        transaction_time = status_response.get("transaction_time")
+        
+        # Update or create payment record
+        payment = db.query(models.Payment).filter(models.Payment.order_id == order_id).first()
+        if not payment:
+            payment = models.Payment(
+                transaction_id=transaction.id,
+                order_id=order_id,
+                gross_amount=float(gross_amount) if gross_amount else transaction.total_amount,
+                payment_type=payment_type,
+                transaction_status=transaction_status,
+                fraud_status=fraud_status,
+                midtrans_transaction_id=transaction_id,
+                status_message=status_message,
+            )
+            db.add(payment)
+        else:
+            payment.transaction_status = transaction_status
+            payment.fraud_status = fraud_status
+            payment.midtrans_transaction_id = transaction_id
+            payment.status_message = status_message
+            if transaction_time:
+                from datetime import datetime
+                payment.transaction_time = datetime.fromisoformat(transaction_time.replace('Z', '+00:00'))
+        
+        # Update transaction status and reduce stock on payment success
+        # Hanya kurangi stock jika status berubah dari pending/other ke paid (menghindari double decrement)
+        if transaction_status in ["settlement", "capture"]:
+            # Payment success
+            # Cek apakah status sebelumnya sudah "paid" untuk menghindari double decrement stock
+            previous_status = transaction.status
+            transaction.status = "paid"
+            transaction.midtrans_transaction_id = transaction_id
+            
+            # Reduce stock hanya jika sebelumnya belum "paid" (menghindari double decrement)
+            if previous_status != "paid" and transaction.product_id:
+                product = db.query(models.Product).filter(models.Product.id == transaction.product_id).first()
+                if product:
+                    # Check if stock is sufficient
+                    if product.stock >= transaction.quantity:
+                        product.stock -= transaction.quantity
+                        print(f"Stock reduced for product {product.id}: {product.stock + transaction.quantity} -> {product.stock}")
+                    else:
+                        print(f"Warning: Insufficient stock for product {product.id}. Stock: {product.stock}, Requested: {transaction.quantity}")
+        elif transaction_status in ["deny", "cancel", "expire"]:
+            # Payment failed
+            transaction.status = "failed"
+        
+        db.commit()
+        
+        return {
+            "status": "ok",
+            "order_id": order_id,
+            "transaction_status": transaction_status,
+            "message": f"Payment status: {transaction_status}"
+        }
+        
+    except Exception as e:
+        print(f"Error checking payment status: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==================== PRODUCT ENDPOINTS ====================
@@ -716,7 +907,12 @@ def create_transaction(
         product_id=transaction_data.product_id,
         quantity=transaction_data.quantity,
         total_amount=transaction_data.total_amount,
-        status=transaction_data.status
+        status=transaction_data.status,
+        shipping_name=transaction_data.shipping_name,
+        shipping_phone=transaction_data.shipping_phone,
+        shipping_address=transaction_data.shipping_address,
+        shipping_city=transaction_data.shipping_city,
+        shipping_postal_code=transaction_data.shipping_postal_code,
     )
     db.add(transaction)
     db.commit()

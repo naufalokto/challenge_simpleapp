@@ -70,6 +70,12 @@ class Transaction(Base):
     status = Column(String(50), default="pending", nullable=False, index=True)  # pending, paid, failed, cancelled
     payment_method = Column(String(50), nullable=True)
     midtrans_transaction_id = Column(String(100), nullable=True, index=True)
+    # Informasi pengiriman / alamat customer pada saat checkout
+    shipping_name = Column(String(100), nullable=True)
+    shipping_phone = Column(String(50), nullable=True)
+    shipping_address = Column(Text, nullable=True)
+    shipping_city = Column(String(100), nullable=True)
+    shipping_postal_code = Column(String(20), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

@@ -681,25 +681,6 @@ function App() {
             ? "Logging in..."
             : "LOGIN"}
         </button>
-
-        {/* Forgot Password */}
-        <p
-          style={{
-            margin: 0,
-            fontSize: "16px",
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 500,
-            color: "#fff",
-            textAlign: "center",
-            cursor: "pointer",
-          }}
-          onClick={() => {
-            // TODO: Implement forgot password
-            alert("Forgot password feature coming soon");
-          }}
-        >
-          Forgot password?
-        </p>
       </form>
       </div>
     </>
