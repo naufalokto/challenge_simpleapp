@@ -993,6 +993,64 @@ def get_transaction(
     }
 
 
+# ==================== USER MANAGEMENT ENDPOINTS (ADMIN ONLY) ====================
+@app.get("/api/users", response_model=list[schemas.UserResponse])
+def get_all_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin)  # Hanya admin
+):
+    """Get all users - hanya admin yang bisa akses"""
+    users = db.query(models.User).offset(skip).limit(limit).all()
+    result = []
+    for user in users:
+        result.append({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "full_name": user.full_name,
+            "role_id": user.role_id,
+            "role_name": user.role.name if user.role else None,
+            "is_active": user.is_active
+        })
+    return result
+
+
+@app.delete("/api/users/{user_id}")
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin)  # Hanya admin
+):
+    """Delete user - hanya admin yang bisa akses"""
+    # Tidak boleh delete diri sendiri
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account"
+        )
+    
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    db.delete(user)
+    db.commit()
+    return {"message": "User deleted successfully"}
+
+
+# ==================== ROLE ENDPOINTS ====================
+@app.get("/api/roles", response_model=list[schemas.Role])
+def get_roles(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get all roles - semua user yang login bisa akses"""
+    roles = db.query(models.Role).all()
+    return roles
+
+
 # ==================== PAYMENT ENDPOINTS ====================
 @app.get("/api/payments", response_model=list[schemas.Payment])
 def get_payments(

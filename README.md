@@ -1,65 +1,92 @@
--Simple App Document
+# Challenge App setup
 
-Project ini berisi:
+Aplikasi ini menggunakan FastAPI untuk backend dan React untuk frontend, dengan database PostgreSQL.
 
-- Backend: `FastAPI` + `SQLAlchemy` + `PostgreSQL`
-- Frontend: `React` (create-react-app style)
 
-1. pada struktur saya
+yang ter install di komputer saya:
+- Python 3.9 atau lebih tinggi
+- Node.js dan npm
+- PostgreSQL yang sudah berjalan
+- Database `simple_app` sudah dibuat
 
-- `app/` – kode backend 
-  - `main.py` – endpoint API
-  - `database.py` – koneksi ke PostgreSQL
-  - `models.py` – model ORM (untuk develope relasional database)
-  - `schemas.py` – schema Pydantic
-- `frontend/` – kode React
-- `requirements.txt` – dependency Python
-- `frontend/package.json` – dependency frontend
+## Setup Backend
 
-2. Menjalankan backend untuk local
+di terminal dan masuk ke folder project:
 
-catatan: Python 3.9+, PostgreSQL berjalan dan sudah ada database `simple_app`.
-
-```bash
+```
 cd /Users/macbook/Documents/challenge_appsimple
-
-python3 -m venv .venv
-source .venv/bin/activate
-
-pip install -r requirements.txt
-
-
-
----------------------------------------------------------------------
- (contoh DATABASE_URL, sesuaikan user/password/host/port/db)
-export DATABASE_URL="postgresql+psycopg2://postgres:12345@localhost:5433/simple_app"
-
-uvicorn app.main:app --reload
 ```
 
-Backend berjalan di `http://127.0.0.1:8000` (docs di `http://127.0.0.1:8000/docs`).
+Buat virtual environment Python:
 
-### 3. Menjalankan frontend (lokal)
+```
+python3 -m venv .venv
+```
 
-```bash
+Aktifkan virtual environment:
+
+```
+source .venv/bin/activate
+```
+
+Install dependencies Python:
+
+```
+pip install -r requirements.txt
+```
+
+file .env di root folder dan konfigurasi database:
+
+```
+DATABASE_URL=postgresql+psycopg2://username:password@localhost:5433/simple_app
+```
+
+
+Jalankan backend server:
+
+```
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Backend di http://127.0.0.1:8000. 
+Dokumentasi API di http://127.0.0.1:8000/docs.
+
+## Setup Frontend
+```
 cd /Users/macbook/Documents/challenge_appsimple/frontend
+```
+
+Install dependencies Node.js:
+
+```
 npm install
+```
+
+Jalankan frontend development server:
+
+```
 npm start
 ```
 
-Frontend berjalan di `http://localhost:3000` dan berkomunikasi dengan backend di `http://127.0.0.1:8000`.
+Frontend akan berjalan di http://localhost:3000 
 
-4. Database & dump
+## Konfigurasi Environment Variables
 
-- Database yang dipakai: `simple_app`
-- Tabel utama: `items`
-- Dump database saya buat via pgAdmin (Backup, format `Custom`) sebagai `simple_app.dump` dan di-restore di 
+Untuk backend, pastikan file .env sudah dibuat di root folder dengan isi:
 
-```bash
-createdb simple_app
-pg_restore -d simple_app simple_app.dump
+```
+DATABASE_URL=postgresql+psycopg2://username:password@localhost:port/simple_app
+MIDTRANS_SERVER_KEY=your_midtrans_server_key
+MIDTRANS_CLIENT_KEY=your_midtrans_client_key
+MIDTRANS_IS_PRODUCTION=false
+MIDTRANS_API_URL=https://app.sandbox.midtrans.com
 ```
 
-Setelah restore, sesuaikan `DATABASE_URL` di environment server postgrest bapak 
+
+
+## Menjalankan Aplikasi
+---
+
+
 
 

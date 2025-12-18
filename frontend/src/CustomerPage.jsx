@@ -289,7 +289,7 @@ function CustomerPage({ user, onLogout }) {
           background: "#ffffff",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           padding: "0 24px",
           fontSize: 12,
           color: "#111827",
@@ -297,66 +297,36 @@ function CustomerPage({ user, onLogout }) {
           marginBottom: 16,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "4px 10px",
-              borderRadius: 6,
-              background: "#ebeef6",
-            }}
-          >
-            <span style={{ fontWeight: 700 }}>📞</span>
-            <span>Hotline 24/7</span>
-          </div>
-          <span style={{ fontWeight: 500 }}>(025) 3886 25 16</span>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 24,
-            fontSize: 14,
-          }}
-        >
-          <span>Sell on Swoo</span>
-          <span>Order Track</span>
-          <span>USD</span>
-
-          {/* user + logout */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ textAlign: "right" }}>
-              <div
-                style={{
-                  fontSize: 11,
-                  textTransform: "uppercase",
-                  color: "#6b7280",
-                }}
-              >
-                Welcome
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>
-                {displayName}
-              </div>
-            </div>
-            <button
-              onClick={onLogout}
+        {/* user + logout */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ textAlign: "right" }}>
+            <div
               style={{
-                padding: "4px 10px",
-                borderRadius: 999,
-                border: "1px solid #e5e7eb",
-                background: "#ffffff",
                 fontSize: 11,
-                fontWeight: 600,
-                cursor: "pointer",
+                textTransform: "uppercase",
+                color: "#6b7280",
               }}
             >
-              Logout
-            </button>
+              Welcome
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>
+              {displayName}
+            </div>
           </div>
+          <button
+            onClick={onLogout}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 999,
+              border: "1px solid #e5e7eb",
+              background: "#ffffff",
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Logout
+          </button>
         </div>
       </div>
 
@@ -369,71 +339,35 @@ function CustomerPage({ user, onLogout }) {
           padding: "0 24px",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "flex-start",
           boxShadow: "0 4px 10px rgba(0,0,0,0.04)",
           marginBottom: 16,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 40 }}>
-          {/* Logo teks challenge-app */}
-          <div>
-            <div
-              style={{
-                fontSize: 22,
-                fontWeight: 800,
-                letterSpacing: 0.8,
-              }}
-            >
-              challenge-app
-            </div>
-            <div
-              style={{
-                fontSize: 11,
-                color: "#6b7280",
-                marginTop: 2,
-              }}
-            >
-              SIMPLE FASTAPI + REACT
-            </div>
-          </div>
-
+        {/* Logo teks challenge-app */}
+        <div>
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 24,
-              textTransform: "uppercase",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "#374151",
+              fontSize: 22,
+              fontWeight: 800,
+              letterSpacing: 0.8,
             }}
           >
-            <span>Home</span>
-            <span>Products</span>
-            <span>Cart</span>
+            challenge-app
           </div>
-        </div>
-
-        {/* Cart ringkas */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div
             style={{
-              position: "relative",
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              background: "#ebeef6",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              fontSize: 11,
+              color: "#6b7280",
+              marginTop: 2,
             }}
           >
-            <span style={{ fontSize: 18 }}>🛒</span>
+            SIMPLE FASTAPI + REACT
           </div>
         </div>
       </div>
 
-      {/* search bar biru */}
+      {/* search bar biru - hanya menampilkan midtrans payment gateway */}
       <div
         style={{
           height: 75,
@@ -442,77 +376,19 @@ function CustomerPage({ user, onLogout }) {
           padding: "15px 24px",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           color: "#ffffff",
           marginBottom: 16,
         }}
       >
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            background: "#ffffff",
-            borderRadius: 30,
-            overflow: "hidden",
-            maxWidth: 540,
-            width: "100%",
-          }}
-        >
-          <div
-            style={{
-              width: 155,
-              padding: "0 16px",
-              borderRight: "1px solid #e5e7eb",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>
-              All Products
-            </span>
-          </div>
-          <input
-            type="text"
-            placeholder="Search (belum aktif)..."
-            style={{
-              flex: 1,
-              border: "none",
-              outline: "none",
-              padding: "0 16px",
-              fontSize: 13,
-              color: "#374151",
-            }}
-            disabled
-          />
-          <button
-            type="button"
-            style={{
-              width: 56,
-              height: 45,
-              border: "none",
-              background: "transparent",
-              color: PRIMARY_COLOR,
-              fontSize: 18,
-            }}
-          >
-            🔍
-          </button>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 36,
             fontSize: 13,
             textTransform: "uppercase",
             fontWeight: 500,
           }}
         >
-          <span>Free shipping over Rp 1.000.000</span>
-          <span>30 days money back</span>
-          <span>100% secure payment</span>
+          <span>midtrans payment gateway</span>
         </div>
       </div>
     </>
