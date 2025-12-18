@@ -82,6 +82,27 @@ MIDTRANS_IS_PRODUCTION=false
 MIDTRANS_API_URL=https://app.sandbox.midtrans.com
 ```
 
+Restore Database
+
+File dump database `simple_app.dump` saya kirim terpisah. Untuk restore database:
+
+database `simple_app` sudah dibuat dahulu
+
+```
+createdb simple_app
+
+```
+psql -U postgres -c "CREATE DATABASE simple_app;"
+```
+
+Restore database dari file dump:
+
+```
+pg_restore -U postgres -h localhost -p 5433 -d simple_app simple_app.dump
+```
+
+(5433) saya menggunakan 5433 karna 5432 terpakai.
+
 
 
 ## Menjalankan Aplikasi
