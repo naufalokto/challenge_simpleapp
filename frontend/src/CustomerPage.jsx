@@ -165,14 +165,36 @@ function CustomerPage({ user, onLogout }) {
   };
 
   const handleShippingChange = (field, value) => {
-    setShipping((prev) => ({ ...prev, [field]: value }));
-    setFormErrors((prev) => ({ ...prev, [field]: "" }));
+    // Validasi khusus untuk nomor telepon - hanya angka yang bisa diinput
+    if (field === "phone") {
+      // Hanya izinkan angka (0-9)
+      const numericValue = value.replace(/[^0-9]/g, "");
+      setShipping((prev) => ({ ...prev, [field]: numericValue }));
+      setFormErrors((prev) => ({ ...prev, [field]: "" }));
+    } else {
+      setShipping((prev) => ({ ...prev, [field]: value }));
+      setFormErrors((prev) => ({ ...prev, [field]: "" }));
+    }
   };
 
   const validateShipping = () => {
     const errors = {};
     if (!shipping.full_name.trim()) errors.full_name = "Isi nama lengkap";
-    if (!shipping.phone.trim()) errors.phone = "Isi nomor telepon";
+    
+    // Validasi nomor telepon
+    if (!shipping.phone.trim()) {
+      errors.phone = "Isi nomor telepon";
+    } else {
+      const phoneNumber = shipping.phone.trim();
+      
+      // Validasi format nomor HP Indonesia (10-13 digit, hanya angka)
+      if (phoneNumber.length < 10 || phoneNumber.length > 13) {
+        errors.phone = "Nomor telepon harus 10-13 digit";
+      } else if (phoneNumber.startsWith("0") && phoneNumber.length < 11) {
+        errors.phone = "Nomor telepon yang dimulai dengan 0 harus minimal 11 digit";
+      }
+    }
+    
     if (!shipping.address.trim()) errors.address = "Isi alamat lengkap";
     if (!shipping.city.trim()) errors.city = "Isi kota";
     if (!shipping.postal_code.trim())
@@ -734,11 +756,14 @@ function CustomerPage({ user, onLogout }) {
               Nomor Telepon
             </label>
             <input
-              type="text"
+              type="tel"
+              inputMode="numeric"
               value={shipping.phone}
               onChange={(e) =>
                 handleShippingChange("phone", e.target.value)
               }
+              placeholder="081234567890"
+              maxLength={13}
               style={{
                 width: "100%",
                 marginTop: 4,
@@ -993,20 +1018,7 @@ function CustomerPage({ user, onLogout }) {
             color: "#6b7280",
           }}
         >
-          Setelah klik tombol di bawah, Anda akan diarahkan ke
-          halaman pembayaran Midtrans. Setelah pembayaran selesai,
-          redirect akhir dapat diatur di dashboard Midtrans.
-        </div>
-        <div
-          style={{
-            fontSize: 12,
-            marginBottom: 16,
-            color: "#6b7280",
-          }}
-        >
-          Setelah klik tombol di bawah, Anda akan diarahkan ke
-          halaman pembayaran Midtrans. Setelah pembayaran selesai,
-          Anda akan diarahkan kembali ke aplikasi.
+          ini hanyalah invoice untuk simulasi pembayaran di snap midtrans
         </div>
         <button
           type="button"
@@ -1048,14 +1060,6 @@ function CustomerPage({ user, onLogout }) {
           textAlign: "center",
         }}
       >
-        <div
-          style={{
-            fontSize: 48,
-            marginBottom: 16,
-          }}
-        >
-          {isSuccess ? "✅" : isPending ? "⏳" : "❌"}
-        </div>
         <h2
           style={{
             fontSize: 24,
